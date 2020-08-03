@@ -20,13 +20,21 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
 )
 
+if (WIN32)
+  file(GLOB CAN_CPP_FILES src/slcan_gateway.cpp)
+else()
+  file(GLOB CAN_CPP_FILES src/socketcan_gateway.cpp)
+endif()
+
 add_library(puma_motor_driver
+  ${CAN_CPP_FILES}
   src/driver.cpp
   src/serial_gateway.cpp
-  src/socketcan_gateway.cpp
   src/multi_driver_node.cpp
   src/diagnostic_updater.cpp
 )
+
+add_compile_options(/Od)
 
 target_link_libraries(puma_motor_driver
   ${catkin_LIBRARIES}
@@ -51,6 +59,14 @@ install(TARGETS puma_motor_driver puma_multi_controller_node
 install(DIRECTORY include/${PROJECT_NAME}/
   DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
 )
+
+if (WIN32)
+# Remember to install the DLL side-by-side to ROS application
+install(FILES
+    ${CMAKE_BINARY_DIR}/installed/pcan-basic/bin/PCANBasic.dll
+    DESTINATION ${CATKIN_GLOBAL_BIN_DESTINATION}
+)
+endif()
 
 if(CATKIN_ENABLE_TESTING)
   find_package(roslint REQUIRED)

@@ -21,39 +21,55 @@ OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTE
 ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
-#ifndef PUMA_MOTOR_DRIVER_MESSAGE_H
-#define PUMA_MOTOR_DRIVER_MESSAGE_H
 
-#include "puma_motor_driver/can_proto.h"
+#ifndef PUMA_MOTOR_DRIVER_SLCAN_GATEWAY_H
+#define PUMA_MOTOR_DRIVER_SSLCAN_GATEWAY_H
 
-#include <stdint.h>
 
+#include <string>
+#include <stdio.h>
+#include "puma_motor_driver/gateway.h"
+#include "puma_motor_driver/message.h"
 
 namespace puma_motor_driver
 {
 
-class Message
+#pragma pack(push, 1)
+struct SLCanMsg
+{
+  char type;
+  char id[8];
+  char len[1];
+  char data[16];
+  char delim;
+};
+#pragma pack(pop)
+
+class SLCANGateway : public Gateway
 {
 public:
-  uint8_t data[8];
-  uint32_t id;
-  uint8_t len;
+  explicit SLCANGateway(std::string canbus_dev);
 
-  explicit Message(uint32_t id = 0) : id(id), len(0)
-  {
-  }
+  virtual bool connect();
+  virtual bool isConnected();
 
-  uint32_t getDeviceNumber() const
-  {
-    return id & CAN_MSGID_DEVNO_M;
-  }
+  virtual bool recv(Message* msg);
+  virtual void queue(const Message& msg);
+  virtual bool sendAllQueued();
 
-  uint32_t getApi() const
-  {
-    return id & (CAN_MSGID_FULL_M ^ CAN_MSGID_DEVNO_M);
-  }
+private:
+  
+  std::string canbus_dev_;  // CAN interface ID
+  bool is_connected_;
+
+  boost::asio::io_service io_service_;
+  boost::asio::ip::udp::socket *socket_;
+  boost::thread socket_thread_;
+  boost::asio::ip::udp::endpoint mcu_endpoint_, local_endpoint_;
+  Message write_frames_[1024];
+  int write_frames_index_;
 };
 
 }  // namespace puma_motor_driver
 
-#endif  // PUMA_MOTOR_DRIVER_MESSAGE_H
+#endif  // PUMA_MOTOR_DRIVER_SOCKETCAN_GATEWAY_H
